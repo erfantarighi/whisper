@@ -117,7 +117,7 @@ def dtw_cuda(x, BLOCK_SIZE=1024):
     x_skew = x_skew.T.contiguous()
     cost = torch.ones(N + M + 2, M + 2) * np.inf
     cost[0, 0] = 0
-    cost = cost.cuda()
+    cost = cost.to(x.device)
     trace = torch.zeros_like(cost, dtype=torch.int32)
 
     dtw_kernel[(1,)](
@@ -191,7 +191,9 @@ def find_alignment(
         for i, block in enumerate(model.decoder.blocks)
     ]
 
-    with torch.no_grad():
+    from .model import disable_sdpa
+
+    with torch.no_grad(), disable_sdpa():
         logits = model(mel.unsqueeze(0), tokens.unsqueeze(0))[0]
         sampled_logits = logits[len(tokenizer.sot_sequence) :, : tokenizer.eot]
         token_probs = sampled_logits.softmax(dim=-1)
